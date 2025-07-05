@@ -5,8 +5,24 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
   { ignores: ['dist'] },
+  // Configuration for Node.js files (Electron main process and preload scripts)
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['electron-main.js', 'preload.js'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.node,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'commonjs',
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+    },
+  },
+  // Configuration for React/browser files
+  {
+    files: ['src/**/*.{js,jsx}', 'vite.config.js'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

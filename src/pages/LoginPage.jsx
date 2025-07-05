@@ -2,23 +2,64 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/react.svg'; // Placeholder logo
 
-const roles = ['Admin', 'Doctor', 'Nurse', 'Receptionist'];
-
 function LoginPage({ setUser }) {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // Get all user credentials from environment variables
+  const users = [
+    {
+      name: import.meta.env.VITE_USER1_NAME,
+      username: import.meta.env.VITE_USER1_USERNAME,
+      password: import.meta.env.VITE_USER1_PASSWORD
+    },
+    {
+      name: import.meta.env.VITE_USER2_NAME,
+      username: import.meta.env.VITE_USER2_USERNAME,
+      password: import.meta.env.VITE_USER2_PASSWORD
+    },
+    {
+      name: import.meta.env.VITE_USER3_NAME,
+      username: import.meta.env.VITE_USER3_USERNAME,
+      password: import.meta.env.VITE_USER3_PASSWORD
+    },
+    {
+      name: import.meta.env.VITE_USER4_NAME,
+      username: import.meta.env.VITE_USER4_USERNAME,
+      password: import.meta.env.VITE_USER4_PASSWORD
+    },
+    {
+      name: import.meta.env.VITE_USER5_NAME,
+      username: import.meta.env.VITE_USER5_USERNAME,
+      password: import.meta.env.VITE_USER5_PASSWORD
+    }
+  ];
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email || !password || !role) {
-      setError('All fields are required.');
-      return;
+    setError('');
+
+    // Check if credentials match any user
+    const validUser = users.find(user =>
+      user.username === username && user.password === password
+    );
+
+    if (validUser) {
+      // Store login status and user info in localStorage
+      localStorage.setItem('hospitalAuth', 'true');
+      localStorage.setItem('hospitalUser', validUser.name);
+      localStorage.setItem('hospitalUsername', validUser.username);
+
+      // Set user for the app
+      setUser({ name: validUser.name, username: validUser.username });
+
+      // Redirect to dashboard
+      navigate('/');
+    } else {
+      setError('Invalid username or password');
     }
-    setUser({ email, role });
-    navigate('/dashboard');
   };
 
   return (
@@ -30,19 +71,26 @@ function LoginPage({ setUser }) {
         </div>
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label className="form-label">Email</label>
-            <input type="email" className="form-control" value={email} onChange={e => setEmail(e.target.value)} required />
+            <label className="form-label">Username</label>
+            <input
+              type="text"
+              className="form-control"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              placeholder="Enter your username"
+              required
+            />
           </div>
           <div className="mb-3">
             <label className="form-label">Password</label>
-            <input type="password" className="form-control" value={password} onChange={e => setPassword(e.target.value)} required />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Role</label>
-            <select className="form-select" value={role} onChange={e => setRole(e.target.value)} required>
-              <option value="">Select Role</option>
-              {roles.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
+            <input
+              type="password"
+              className="form-control"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+            />
           </div>
           {error && <div className="alert alert-danger py-2">{error}</div>}
           <button type="submit" className="btn btn-primary w-100">Login</button>

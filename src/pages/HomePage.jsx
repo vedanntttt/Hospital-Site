@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/react.svg';
-import { PatientContext } from '../App';
+import { PatientContext } from '../contexts/PatientContext';
 
 function HomePage() {
   const navigate = useNavigate();

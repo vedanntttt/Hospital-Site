@@ -1,7 +1,7 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/react.svg';
-import { PatientContext } from '../App';
+import { usePatients } from '../contexts/SupabasePatientContext.jsx';
 
 // Helper to format date as DD-MM-YYYY
 function formatDateIndian(dateStr) {
@@ -10,10 +10,16 @@ function formatDateIndian(dateStr) {
   return `${day}-${month}-${year}`;
 }
 
-function DashboardPage({ user }) {
-  const { patients, setPatients } = useContext(PatientContext);
+function DashboardPage() {
+  // Get user data from localStorage (set by AuthWrapper)
+  const user = {
+    name: localStorage.getItem('hospitalUser'),
+    username: localStorage.getItem('hospitalUsername')
+  };
+
+  const { patients, scheduleSlots, addPatient, updatePatient, deletePatient, loading, error } = usePatients();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ id: '', name: '', age: '', gender: '', date: '', contact: '' });
+  const [form, setForm] = useState({ name: '', age: '', gender: '', date: '', contact: '', doctor: '' });
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState(false);
   const [search, setSearch] = useState('');
@@ -37,32 +43,41 @@ function DashboardPage({ user }) {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleFormSubmit = e => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!form.id || !form.name || !form.age || !form.gender || !form.date || !form.contact) {
+    if (!form.name || !form.age || !form.gender || !form.date || !form.contact) {
       setFormError('All fields are required.');
       setFormSuccess(false);
       return;
     }
-    if (patients.some(p => p.id.toString() === form.id.toString())) {
-      setFormError('ID already exists. Please use a unique ID.');
+
+    try {
+      const newPatient = {
+        name: form.name,
+        age: parseInt(form.age),
+        gender: form.gender,
+        date: form.date,
+        contact: form.contact,
+        doctor: form.doctor || '' // Optional doctor field
+      };
+
+      const result = await addPatient(newPatient);
+
+      if (result.success) {
+        setForm({ id: '', name: '', age: '', gender: '', date: '', contact: '', doctor: '' });
+        setFormError('');
+        setFormSuccess(true);
+        setTimeout(() => setFormSuccess(false), 2000);
+        setShowForm(false);
+      } else {
+        setFormError(`Error: ${result.error}`);
+        setFormSuccess(false);
+      }
+    } catch (err) {
+      console.error('Error adding patient:', err);
+      setFormError('Error: Failed to add patient');
       setFormSuccess(false);
-      return;
     }
-    const newPatient = {
-      id: form.id,
-      name: form.name,
-      age: form.age,
-      gender: form.gender,
-      date: form.date,
-      contact: form.contact,
-    };
-    setPatients([...patients, newPatient]);
-    setForm({ id: '', name: '', age: '', gender: '', date: '', contact: '' });
-    setFormError('');
-    setFormSuccess(true);
-    setTimeout(() => setFormSuccess(false), 2000);
-    setShowForm(false);
   };
 
   const handleEdit = (patient) => {
@@ -80,19 +95,44 @@ function DashboardPage({ user }) {
     setEditForm({ ...editForm, [e.target.name]: e.target.value });
   };
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!window.confirm('Are you sure you want to save changes to this patient?')) return;
-    setPatients(patients.map(p =>
-      p.id === editId ? { ...p, ...editForm } : p
-    ));
-    setEditId(null);
+
+    try {
+      const result = await updatePatient(editId, editForm);
+      if (result.success) {
+        setEditId(null);
+      } else {
+        alert(`Error updating patient: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Error updating patient:', err);
+      alert('Error: Failed to update patient');
+    }
   };
 
   // Add delete handler
-  function handleDelete(id) {
+  const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this patient?')) return;
-    setPatients(patients.filter(p => p.id !== id));
-  }
+
+    try {
+      const result = await deletePatient(id);
+      if (!result.success) {
+        alert(`Error deleting patient: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Error deleting patient:', err);
+      alert('Error: Failed to delete patient');
+    }
+  };
+
+  // Debug info
+  console.log('Dashboard - patients:', patients);
+  console.log('Dashboard - scheduleSlots:', scheduleSlots);
+  console.log('Dashboard - loading:', loading);
+  console.log('Dashboard - error:', error);
+
+
 
   return (
     <div className="bg-light min-vh-100">
@@ -102,16 +142,26 @@ function DashboardPage({ user }) {
             <img src={logo} alt="Hospital Logo" width="40" height="40" className="me-2" />
             <span className="fw-bold fs-4">Narayana Superspeciality Hospital</span>
           </a>
-          <span className="text-white ms-auto">Logged in as: <b>{user.role}</b></span>
+          <span className="text-white ms-auto">Logged in as: <b>{user.name}</b></span>
         </div>
       </nav>
-      <div className="container py-4">
+      <div className="container py-5">
+        {/* Debug info */}
+        {loading && <div className="alert alert-info">Loading patients...</div>}
+        {error && <div className="alert alert-danger">Error: {error}</div>}
+        {!loading && !error && patients.length === 0 && (
+          <div className="alert alert-warning">No patients found. Add some patients or check Supabase connection.</div>
+        )}
+        <div className="d-flex gap-3 mb-4">
+          <button className="btn btn-info btn-lg" onClick={() => navigate('/doctor-schedule/aditi')}>Aditi Mam</button>
+          <button className="btn btn-info btn-lg" onClick={() => navigate('/doctor-schedule/chaitanya')}>Chaitanya Sir</button>
+        </div>
+
+
+
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h3>Patient Records</h3>
           <div>
-            <button className="btn btn-info me-2" onClick={() => navigate('/doctor-schedule')}>
-              Doctor Schedule
-            </button>
             <button className="btn btn-success" onClick={() => setShowForm(true)}>
               Add Patient
             </button>
